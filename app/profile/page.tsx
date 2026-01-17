@@ -25,9 +25,18 @@ export default function ProfilePage() {
         const userData = await apiClient.getCurrentUser();
         setUser(userData);
         const salesData = await apiClient.getSales(userData.id);
-        setSales(salesData);
-      } catch (error) {
+        // Asegurar que salesData sea un array
+        setSales(Array.isArray(salesData) ? salesData : []);
+      } catch (error: any) {
         console.error("Error loading profile:", error);
+        // En caso de error, asegurar que sales sea un array vacío
+        setSales([]);
+        // Si el error es de autenticación, redirigir al login
+        if (error.status === 401 || error.message?.includes("401")) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("userRole");
+          router.push("/login");
+        }
       } finally {
         setLoading(false);
       }
@@ -109,7 +118,7 @@ export default function ProfilePage() {
 
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Mis Compras</h2>
-            {sales.length === 0 ? (
+            {!sales || sales.length === 0 ? (
               <p className="text-gray-600">No tienes compras registradas.</p>
             ) : (
               <div className="space-y-4">

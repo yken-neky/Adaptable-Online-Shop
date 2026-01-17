@@ -1,35 +1,38 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { apiClient } from "@/lib/api";
+import type { LandingPageData } from "@/types";
 
 export const dynamic = 'force-dynamic';
 
 export default async function LandingPage() {
-  // En producción, esto obtendrá los datos del backend
-  // Por ahora, usamos datos de ejemplo
-  let landingData;
+  let landingData: LandingPageData | null = null;
   try {
     landingData = await apiClient.getLandingPage();
   } catch (error: any) {
-    // Si el backend no está disponible, usar datos mock
-    if (
-      error.message === "BACKEND_NOT_AVAILABLE" ||
-      error.name === "BackendNotAvailable" ||
-      error.name === "BackendNotAvailableError" ||
-      error.message?.includes("fetch failed") ||
-      error.message?.includes("Not Found")
-    ) {
-      // Importar datos mock dinámicamente
-      const { mockLandingData } = await import("@/lib/mockData");
-      landingData = mockLandingData;
-    } else {
-      // Re-lanzar otros errores
-      throw error;
-    }
+    // Si el backend no está disponible, mostrar error
+    console.error("Error loading landing page:", error);
+    // Re-lanzar el error para que se muestre apropiadamente
+    throw error;
   }
 
-  const visibleSections = landingData.sections
-    .filter((section) => section.visible)
+  // Validar que landingData y sections existan
+  if (!landingData) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-grow flex items-center justify-center">
+          <p className="text-gray-600">Error al cargar la página. Por favor, intenta más tarde.</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Validar que sections exista y sea un array
+  const sections = landingData.sections || [];
+  const visibleSections = sections
+    .filter((section) => section && section.visible)
     .sort((a, b) => a.order - b.order);
 
   return (

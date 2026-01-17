@@ -27,19 +27,36 @@ export default function RegisterPage() {
       return;
     }
 
+    if (formData.password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
+    if (!formData.name.trim()) {
+      setError("El nombre es requerido");
+      return;
+    }
+
+    if (!formData.email.trim() || !formData.email.includes("@")) {
+      setError("El email no es válido");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await apiClient.register({
-        name: formData.name,
-        email: formData.email,
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
       });
       localStorage.setItem("token", response.token);
       localStorage.setItem("userRole", response.user.role);
       router.push("/landing");
     } catch (err: any) {
-      setError(err.message || "Error al registrarse");
+      // Mostrar el mensaje de error del backend o un mensaje genérico
+      const errorMessage = err.message || "Error al registrarse. Por favor, verifica tus datos.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

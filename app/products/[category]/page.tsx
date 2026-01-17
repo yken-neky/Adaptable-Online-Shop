@@ -17,29 +17,20 @@ export default async function CategoryPage({ params }: PageProps) {
   let products: Product[] = [];
 
   try {
-    category = await apiClient.getCategory(categoryId);
-    products = await apiClient.getProducts(categoryId);
-  } catch (error: any) {
-    // Si el backend no está disponible, usar datos mock
-    if (
-      error.message === "BACKEND_NOT_AVAILABLE" ||
-      error.name === "BackendNotAvailable" ||
-      error.name === "BackendNotAvailableError" ||
-      error.message?.includes("fetch failed") ||
-      error.message?.includes("Not Found")
-    ) {
-      // Importar datos mock dinámicamente
-      const { mockCategories, mockProducts } = await import("@/lib/mockData");
-      category = mockCategories.find(c => c.id === categoryId) || null;
-      if (category) {
-        products = mockProducts.filter(p => p.categoryId === categoryId);
-      } else {
-        notFound();
-      }
-    } else {
-      console.error("Error loading category:", error);
+    const categoryData = await apiClient.getCategory(categoryId);
+    const productsData = await apiClient.getProducts(categoryId);
+
+    // Asegurar que los datos sean válidos
+    category = categoryData || null;
+    products = Array.isArray(productsData) ? productsData : [];
+
+    if (!category) {
       notFound();
     }
+  } catch (error: any) {
+    // Si hay error, mostrar 404
+    console.error("Error loading category:", error);
+    notFound();
   }
 
   if (!category) {

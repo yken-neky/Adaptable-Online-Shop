@@ -56,6 +56,11 @@ export default function CartPage() {
       return;
     }
 
+    if (cart.length === 0) {
+      alert("Tu carrito está vacío");
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const saleData = {
@@ -70,9 +75,42 @@ export default function CartPage() {
       setCart([]);
       alert("Compra realizada exitosamente. El administrador se pondrá en contacto contigo.");
       router.push("/profile");
-    } catch (error) {
-      console.error("Error creating sale:", error);
-      alert("Error al procesar la compra. Por favor, intenta nuevamente.");
+    } catch (error: any) {
+      // No loguear errores 400 ya que son errores esperados del usuario
+      if (error.status !== 400) {
+        console.error("Error creating sale:", error);
+      }
+      
+      // Mostrar mensaje de error más descriptivo
+      let errorMessage = "Error al procesar la compra. Por favor, intenta nuevamente.";
+      
+      if (error.message) {
+        // Si el error menciona productos no encontrados
+        if (error.message.includes("Producto no encontrado") || 
+            error.message.includes("producto") || 
+            error.message.includes("no existe") ||
+            error.message.includes("not found")) {
+          errorMessage = "Uno o más productos en tu carrito ya no están disponibles. Por favor, actualiza tu carrito y vuelve a intentar.";
+          // Limpiar el carrito si hay productos inválidos
+          localStorage.removeItem("cart");
+          setCart([]);
+        } else if (error.message.includes("stock") || error.message.includes("Stock") || error.message.includes("insuficiente")) {
+          errorMessage = "No hay suficiente stock disponible para uno o más productos. Por favor, revisa tu carrito.";
+        } else if (error.status === 401 || error.message.includes("401") || error.message.includes("autenticación")) {
+          errorMessage = "Tu sesión ha expirado. Por favor, inicia sesión nuevamente.";
+          localStorage.removeItem("token");
+          localStorage.removeItem("userRole");
+          router.push("/login?redirect=/cart");
+          return;
+        } else if (error.status === 400) {
+          // Para errores 400, usar el mensaje del backend directamente
+          errorMessage = error.message;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsProcessing(false);
     }

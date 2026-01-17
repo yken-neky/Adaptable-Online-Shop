@@ -22,27 +22,15 @@ export default function ProductDetailPage() {
     async function loadProduct() {
       try {
         const data = await apiClient.getProduct(productId);
-        setProduct(data);
-      } catch (error: any) {
-        // Si el backend no está disponible, usar datos mock
-        if (
-          error.message === "BACKEND_NOT_AVAILABLE" ||
-          error.name === "BackendNotAvailable" ||
-          error.name === "BackendNotAvailableError" ||
-          error.message?.includes("fetch failed") ||
-          error.message?.includes("Not Found")
-        ) {
-          const { mockProducts, mockCategories } = await import("@/lib/mockData");
-          const mockProduct = mockProducts.find(p => p.id === productId);
-          if (mockProduct) {
-            setProduct({
-              ...mockProduct,
-              category: mockCategories.find(c => c.id === mockProduct.categoryId),
-            });
-          }
+        // Validar que el producto sea válido
+        if (data && data.id) {
+          setProduct(data);
         } else {
-          console.error("Error loading product:", error);
+          setProduct(null);
         }
+      } catch (error: any) {
+        console.error("Error loading product:", error);
+        setProduct(null);
       } finally {
         setLoading(false);
       }

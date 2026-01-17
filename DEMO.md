@@ -1,24 +1,8 @@
 # 🎮 Modo Demo - Datos de Demostración
 
-La aplicación incluye un sistema de datos de demostración (mock data) que se activa automáticamente cuando el backend no está disponible. Esto te permite probar todas las funcionalidades sin necesidad de tener el backend corriendo.
+**Nota:** Los datos mock han sido eliminados. La aplicación ahora requiere que el backend esté disponible para funcionar.
 
-## 🚀 Cómo usar el modo demo
-
-### Opción 1: Sin configuración (Recomendado)
-Simplemente ejecuta la aplicación sin configurar `NEXT_PUBLIC_API_URL`:
-
-```bash
-npm run dev
-```
-
-La aplicación usará automáticamente los datos de demostración.
-
-### Opción 2: Forzar modo demo
-Si tienes configurado `NEXT_PUBLIC_API_URL` pero quieres usar datos demo, puedes crear un archivo `.env.local` con:
-
-```
-NEXT_PUBLIC_USE_MOCK_DATA=true
-```
+Para usar datos de prueba, ejecuta el script SQL `backend/seed_data.sql` en tu base de datos del backend.
 
 ## 📦 Datos de demostración incluidos
 

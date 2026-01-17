@@ -2,10 +2,11 @@
 // Este es un esqueleto que se conectará al backend cuando esté listo
 
 import type { Product, Category, Sale, SaleItem, User, LandingPageData, LandingSection, SaleStatus } from "@/types";
-import { mockCategories, mockProducts, mockLandingData, delay } from "./mockData";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
-const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true" || !process.env.NEXT_PUBLIC_API_URL;
+
+// Tipo para respuestas de API que pueden incluir errores
+type ApiResponse<T> = T | { error: string; status: number };
 
 // Clase de error personalizada para errores de backend no disponible
 // Esta clase no se loguea automáticamente en la consola
@@ -18,6 +19,75 @@ class BackendNotAvailableError extends Error {
   }
 }
 
+// Funciones de transformación para convertir snake_case a camelCase
+function transformCategory(category: any): Category {
+  return {
+    id: category.id || category.ID,
+    name: category.name || category.Name,
+    description: category.description || category.Description,
+    image: category.image || category.Image,
+    createdAt: category.createdAt || category.created_at || category.CreatedAt,
+    updatedAt: category.updatedAt || category.updated_at || category.UpdatedAt,
+  };
+}
+
+function transformProduct(product: any): Product {
+  return {
+    id: product.id || product.ID,
+    name: product.name || product.Name,
+    description: product.description || product.Description,
+    price: product.price || product.Price,
+    image: product.image || product.Image,
+    categoryId: product.categoryId || product.category_id || product.CategoryID,
+    stock: product.stock !== undefined ? product.stock : product.Stock,
+    createdAt: product.createdAt || product.created_at || product.CreatedAt,
+    updatedAt: product.updatedAt || product.updated_at || product.UpdatedAt,
+    category: product.category ? transformCategory(product.category) : undefined,
+  };
+}
+
+function transformSaleItem(item: any): SaleItem {
+  return {
+    id: item.id || item.ID,
+    saleId: item.saleId || item.sale_id || item.SaleID,
+    productId: item.productId || item.product_id || item.ProductID,
+    quantity: item.quantity || item.Quantity,
+    price: item.price || item.Price,
+    product: item.product ? transformProduct(item.product) : undefined,
+  };
+}
+
+function transformSale(sale: any): Sale {
+  return {
+    id: sale.id || sale.ID,
+    userId: sale.userId || sale.user_id || sale.UserID,
+    status: sale.status || sale.Status,
+    total: sale.total || sale.Total,
+    items: Array.isArray(sale.items) ? sale.items.map(transformSaleItem) : [],
+    createdAt: sale.createdAt || sale.created_at || sale.CreatedAt,
+    updatedAt: sale.updatedAt || sale.updated_at || sale.UpdatedAt,
+    user: sale.user ? {
+      id: sale.user.id || sale.user.ID,
+      email: sale.user.email || sale.user.Email,
+      name: sale.user.name || sale.user.Name,
+      role: sale.user.role || sale.user.Role,
+      createdAt: sale.user.createdAt || sale.user.created_at || sale.user.CreatedAt,
+    } : undefined,
+  };
+}
+
+function transformLandingSection(section: any): LandingSection {
+  return {
+    id: section.id || section.ID,
+    type: section.type || section.Type,
+    title: section.title || section.Title,
+    content: section.content || section.Content,
+    image: section.image || section.Image,
+    order: section.order !== undefined ? section.order : (section.Order !== undefined ? section.Order : section["order"]),
+    visible: section.visible !== undefined ? section.visible : (section.Visible !== undefined ? section.Visible : true),
+  };
+}
+
 class ApiClient {
   private baseUrl: string;
 
@@ -28,7 +98,7 @@ class ApiClient {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
-  ): Promise<T> {
+  ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -49,7 +119,38 @@ class ApiClient {
         if (response.status === 404) {
           throw new BackendNotAvailableError();
         }
-        throw new Error(`API Error: ${response.statusText}`);
+        
+        // Intentar obtener el mensaje de error del backend
+        let errorMessage = response.statusText;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch {
+          // Si no se puede parsear el JSON, usar statusText
+        }
+        
+        // Sanitizar mensajes de error para mostrar mensajes amigables al usuario
+        if (errorMessage.includes("Field validation for 'Email' failed")) {
+          errorMessage = "Por favor, ingresa un correo electrónico válido.";
+        } else if (errorMessage.includes("Field validation")) {
+          errorMessage = "Los datos ingresados no son válidos. Verifica e intenta nuevamente.";
+        }
+        
+        // Para errores del cliente (4xx), devolver objeto error en lugar de lanzar
+        if (response.status >= 400 && response.status < 500) {
+          return { error: errorMessage, status: response.status };
+        }
+        
+        // No loguear errores del cliente ya que se manejan arriba
+        console.error("API Request failed:", errorMessage);
+        
+        const error = new Error(errorMessage);
+        (error as any).status = response.status;
+        throw error;
       }
 
       return await response.json();
@@ -78,7 +179,7 @@ class ApiClient {
   }
 
   // Autenticación
-  async login(email: string, password: string) {
+  async login(email: string, password: string): Promise<ApiResponse<{ user: any; token: string }>> {
     return this.request<{ user: any; token: string }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
@@ -98,40 +199,36 @@ class ApiClient {
 
   // Productos
   async getProducts(categoryId?: string) {
-    if (USE_MOCK_DATA) {
-      await delay(300); // Simular delay de red
-      let products = [...mockProducts];
-      if (categoryId) {
-        products = products.filter(p => p.categoryId === categoryId);
-      }
-      // Agregar categorías a los productos
-      return products.map(p => ({
-        ...p,
-        category: mockCategories.find(c => c.id === p.categoryId),
-      }));
-    }
     const endpoint = categoryId 
       ? `/products?categoryId=${categoryId}`
       : "/products";
-    return this.request<Product[]>(endpoint);
+    const result = await this.request<any[]>(endpoint);
+    // Asegurar que siempre retorne un array y transformar campos
+    if (!Array.isArray(result)) {
+      return [];
+    }
+    return result.map(transformProduct);
   }
 
   async getProduct(id: string) {
-    return this.request<Product>(`/products/${id}`);
+    const result = await this.request<any>(`/products/${id}`);
+    return transformProduct(result);
   }
 
   async createProduct(data: Partial<Product>) {
-    return this.request<Product>("/products", {
+    const result = await this.request<any>("/products", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return transformProduct(result);
   }
 
   async updateProduct(id: string, data: Partial<Product>) {
-    return this.request<Product>(`/products/${id}`, {
+    const result = await this.request<any>(`/products/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
+    return transformProduct(result);
   }
 
   async deleteProduct(id: string) {
@@ -142,37 +239,33 @@ class ApiClient {
 
   // Categorías
   async getCategories() {
-    if (USE_MOCK_DATA) {
-      await delay(300);
-      return mockCategories;
+    const result = await this.request<any[]>("/categories");
+    // Asegurar que siempre retorne un array y transformar campos
+    if (!Array.isArray(result)) {
+      return [];
     }
-    return this.request<Category[]>("/categories");
+    return result.map(transformCategory);
   }
 
   async getCategory(id: string) {
-    if (USE_MOCK_DATA) {
-      await delay(300);
-      const category = mockCategories.find(c => c.id === id);
-      if (!category) {
-        throw new BackendNotAvailableError();
-      }
-      return category;
-    }
-    return this.request<Category>(`/categories/${id}`);
+    const result = await this.request<any>(`/categories/${id}`);
+    return transformCategory(result);
   }
 
   async createCategory(data: Partial<Category>) {
-    return this.request<Category>("/categories", {
+    const result = await this.request<any>("/categories", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return transformCategory(result);
   }
 
   async updateCategory(id: string, data: Partial<Category>) {
-    return this.request<Category>(`/categories/${id}`, {
+    const result = await this.request<any>(`/categories/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
+    return transformCategory(result);
   }
 
   async deleteCategory(id: string) {
@@ -186,61 +279,86 @@ class ApiClient {
     const endpoint = userId 
       ? `/sales?userId=${userId}`
       : "/sales";
-    return this.request<Sale[]>(endpoint);
+    const result = await this.request<any[]>(endpoint);
+    // Asegurar que siempre retorne un array y transformar campos
+    if (!Array.isArray(result)) {
+      return [];
+    }
+    return result.map(transformSale);
   }
 
   async getSale(id: string) {
-    return this.request<Sale>(`/sales/${id}`);
+    const result = await this.request<any>(`/sales/${id}`);
+    return transformSale(result);
   }
 
   async createSale(data: { items: Array<{ productId: string; quantity: number }> }) {
-    return this.request<Sale>("/sales", {
+    const result = await this.request<any>("/sales", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return transformSale(result);
   }
 
   async updateSaleStatus(id: string, status: SaleStatus) {
-    return this.request<Sale>(`/sales/${id}/status`, {
+    const result = await this.request<any>(`/sales/${id}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
     });
+    return transformSale(result);
   }
 
   async cancelSale(id: string) {
-    return this.request<Sale>(`/sales/${id}/cancel`, {
+    const result = await this.request<any>(`/sales/${id}/cancel`, {
       method: "PATCH",
     });
+    return transformSale(result);
   }
 
   // Landing Page
   async getLandingPage() {
-    if (USE_MOCK_DATA) {
-      await delay(300);
-      return mockLandingData;
-    }
-    return this.request<LandingPageData>("/landing");
+    const result = await this.request<any>("/landing");
+    // Transformar los datos de la landing page
+    const landingData: LandingPageData = {
+      companyName: result.companyName || result.company_name || result.CompanyName || "",
+      companyDescription: result.companyDescription || result.company_description || result.CompanyDescription,
+      logo: result.logo || result.Logo,
+      sections: Array.isArray(result.sections) 
+        ? result.sections.map(transformLandingSection)
+        : [],
+    };
+    return landingData;
   }
 
   async updateLandingPage(data: Partial<LandingPageData>) {
-    return this.request<LandingPageData>("/landing", {
+    const result = await this.request<any>("/landing", {
       method: "PUT",
       body: JSON.stringify(data),
     });
+    return {
+      companyName: result.companyName || result.company_name || result.CompanyName || "",
+      companyDescription: result.companyDescription || result.company_description || result.CompanyDescription,
+      logo: result.logo || result.Logo,
+      sections: Array.isArray(result.sections) 
+        ? result.sections.map(transformLandingSection)
+        : [],
+    };
   }
 
   async updateLandingSection(sectionId: string, data: Partial<LandingSection>) {
-    return this.request<LandingSection>(`/landing/sections/${sectionId}`, {
+    const result = await this.request<any>(`/landing/sections/${sectionId}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
+    return transformLandingSection(result);
   }
 
   async createLandingSection(data: Partial<LandingSection>) {
-    return this.request<LandingSection>("/landing/sections", {
+    const result = await this.request<any>("/landing/sections", {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return transformLandingSection(result);
   }
 
   async deleteLandingSection(sectionId: string) {

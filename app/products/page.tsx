@@ -11,37 +11,28 @@ export default async function ProductsPage() {
   let productsByCategory: Record<string, Product[]> = {};
 
   try {
-    categories = await apiClient.getCategories();
-    const allProducts = await apiClient.getProducts();
+    const categoriesData = await apiClient.getCategories();
+    const productsData = await apiClient.getProducts();
+
+    // Asegurar que sean arrays
+    categories = Array.isArray(categoriesData) ? categoriesData : [];
+    const allProducts = Array.isArray(productsData) ? productsData : [];
 
     // Agrupar productos por categoría
-    categories.forEach((category) => {
-      productsByCategory[category.id] = allProducts.filter(
-        (product) => product.categoryId === category.id
-      );
-    });
-  } catch (error: any) {
-    // Si el backend no está disponible, usar datos mock
-    if (
-      error.message === "BACKEND_NOT_AVAILABLE" ||
-      error.name === "BackendNotAvailable" ||
-      error.name === "BackendNotAvailableError" ||
-      error.message?.includes("fetch failed") ||
-      error.message?.includes("Not Found")
-    ) {
-      // Importar datos mock dinámicamente
-      const { mockCategories, mockProducts } = await import("@/lib/mockData");
-      categories = mockCategories;
-      mockCategories.forEach((category) => {
-        productsByCategory[category.id] = mockProducts.filter(
-          (product) => product.categoryId === category.id
-        );
+    if (categories.length > 0 && allProducts.length > 0) {
+      categories.forEach((category) => {
+        if (category && category.id) {
+          productsByCategory[category.id] = allProducts.filter(
+            (product) => product && product.categoryId === category.id
+          );
+        }
       });
-    } else {
-      console.error("Error loading products:", error);
-      categories = [];
-      productsByCategory = {};
     }
+  } catch (error: any) {
+    // Si hay error, mostrar mensaje apropiado
+    console.error("Error loading products:", error);
+    categories = [];
+    productsByCategory = {};
   }
 
   return (

@@ -20,15 +20,27 @@ function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    
+    if (!email.trim() || !password.trim()) {
+      setError("Por favor, completa todos los campos");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await apiClient.login(email, password);
-      localStorage.setItem("token", response.token);
-      localStorage.setItem("userRole", response.user.role);
-      router.push(redirect);
+      const response = await apiClient.login(email.trim().toLowerCase(), password);
+      if ('error' in response) {
+        setError(response.error);
+      } else {
+        localStorage.setItem("token", response.token);
+        localStorage.setItem("userRole", response.user.role);
+        router.push(redirect);
+      }
     } catch (err: any) {
-      setError(err.message || "Error al iniciar sesión");
+      // Para errores no esperados (5xx, conexión, etc.)
+      const errorMessage = err.message || "Error al iniciar sesión. Verifica tus credenciales.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
