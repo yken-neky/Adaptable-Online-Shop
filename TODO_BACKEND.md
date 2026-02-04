@@ -118,3 +118,84 @@ Resultado esperado: `BACKEND_README.md` / sección en `BACK_API.md`.
 ---
 
 Pega cada prompt en GitHub Copilot o en tu asistente y solicita que genere los archivos mencionados; revisa, adapta el estilo y los nombres a las convenciones del repo. Si quieres, puedo encargarme de generar alguno de estos artefactos (archivos o handlers) directamente en el repo local; dime por cuál empezamos."
+
+---
+
+## Nuevos endpoints requeridos (últimos 2 commits)
+
+Basado en los cambios recientes en el frontend (admin UI, profile edits, landing editor, uploads, filtros por categoría), estos endpoints adicionales deben implementarse en el backend. Cada entrada incluye un prompt listo para Copilot y el resultado esperado.
+
+### 1. Perfil de usuario
+Prompt:
+"Implementa endpoints para editar y eliminar cuentas de usuario:
+- `PUT /api/users/:id` — Actualiza `name`, `email` (y opcionalmente otros campos permitidos). Validar que el `id` del token coincida con el `id` o que el rol sea `admin`.
+- `DELETE /api/users/:id` — Elimina la cuenta del usuario. Requiere doble confirmación en el cliente; en el backend asegúrate de borrar o marcar cuentas como inactivas (soft-delete) y limpiar relaciones (opcional).
+Incluye validaciones, respuestas JSON consistentes y autorización."
+
+Resultado esperado: `handlers/users.go` con `UpdateUser` y `DeleteUser`, tests y migración si se añade `deleted_at`.
+
+### 2. Categorías y Productos (borrar/editar desde admin)
+Prompt:
+"Añade/activa endpoints faltantes para categorías y productos:
+- `POST` /api/products/ - Crear nuevo producto (admin)
+- `PUT /api/categories/:id` — Editar nombre/slug/visible (admin)
+- `PUT /api/products/:id` — Editar nombre/slug/visible (admin)
+- `DELETE /api/categories/:id` — Borrar categoría (admin). Si existen productos asociados, decidir política: impedir borrado o reasignar productos a categoría por defecto.
+- `DELETE /api/products/:id` — Borrar categoría (admin). Si existen productos asociados, decidir política: impedir borrado o reasignar productos a categoría por defecto.
+Devuelve 409 si existen dependencias y la política no permite borrado automático."
+
+Resultado esperado: `handlers/categories.go` con handlers `UpdateCategory` y `DeleteCategory` y cambios en `repository`.
+
+### 3. Uploads de imágenes (productos + landing + avatars)
+Prompt:
+"Implementa `POST /api/uploads` que acepte `multipart/form-data` y almacene imágenes localmente o en S3:
+- Validar tipo `image/*` y tamaño máximo (p.ej. 5MB)
+- Retornar `{ url: 'https://.../path.jpg' }`
+- Asociar a `Product.image`, `LandingSection.image` desde el frontend
+- Proteger endpoint (admin)
+Incluye tests y configuración para `STORAGE_PROVIDER` (local/s3)."
+
+Resultado esperado: `handlers/uploads.go`, utilitario `storage/*` y ejemplo en README.
+
+### 4. Guardar/actualizar Landing Page
+Prompt:
+"Asegura endpoints para gestionar el contenido editable de la landing:
+- `GET /api/landing` — Obtener `LandingPageData` (ya existente)
+- `PUT /api/landing` — Reemplazar/actualizar `LandingPageData` completo (admin)
+- `PATCH /api/landing/sections/:id` — Editar sección (admin)
+- `POST /api/landing/sections` — Añadir nueva sección (admin)
+- `DELETE /api/landing/sections/:id` — Borrar sección (admin)
+Validar orden (`order`), visibilidad y rutas de imagen."
+
+Resultado esperado: `handlers/landing.go` con handlers CRUD para secciones y `repository` support.
+
+### 5. Refresh token / manejo 401
+Prompt:
+"Agrega soporte básico para refresh tokens y endpoint:
+- `POST /api/auth/refresh` — Recibe refresh token, valida y emite nuevo access token (y opcionalmente nuevo refresh token)
+Implementa almacenamiento seguro de refresh tokens (DB table) y revocación. Documenta expiraciones."
+
+Resultado esperado: `handlers/auth.go` actualizado, `repository` para tokens, migración.
+
+### 6. Endpoint para listar productos filtrados (mejorado)
+Prompt:
+"Mejora `GET /api/products` para soportar query params adicionales usados por frontend:
+- `?category=<id>` — filtro por categoría
+- `?search=...` — búsqueda por nombre/description
+- `?stock_gt=0` — solo productos en stock
+- paginación `?page=&limit=` y metadata en respuesta
+Incluye índices SQL para acelerar búsquedas."
+
+Resultado esperado: `handlers/products.go` con parámetros parseados y `repository` queries optimizadas.
+
+### 7. Validación política al borrar categoría/producto
+Prompt:
+"Implementa reglas en el backend para operaciones destructivas:
+- Si `DELETE /api/categories/:id` y existen productos asociados, devolver 409 con mensaje explicando la política (o mover a categoría por defecto si se elige esa política).
+- Si `DELETE /api/products/:id` asegurar que no rompa `sale_items` (o prevenir borrado si hay ventas históricas, recomendar `archived` flag)."
+
+Resultado esperado: Reglas implementadas en handlers y repositorio, mensajes de error consistentes.
+
+---
+
+Incluye estas entradas en tus prioridades de sprint: uploads, landing CRUD y perfil (PUT/DELETE) son críticas para el admin; refresh tokens y políticas de borrado son importantes para seguridad y consistencia.
