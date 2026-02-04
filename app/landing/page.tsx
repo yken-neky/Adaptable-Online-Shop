@@ -2,7 +2,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { apiClient } from "@/lib/api";
 import type { LandingPageData } from "@/types";
-
+import Link from "next/link";
 export const dynamic = 'force-dynamic';
 
 export default async function LandingPage() {
@@ -42,32 +42,57 @@ export default async function LandingPage() {
         {visibleSections.map((section) => (
           <section key={section.id} className="py-16 px-4">
             {section.type === "hero" && (
-              <div className="max-w-7xl mx-auto text-center">
-                <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent">
-                  {section.title || landingData.companyName}
-                </h1>
-                <p className="text-xl md:text-2xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed">
-                  {section.content || landingData.companyDescription}
-                </p>
-                {section.image && (
-                  <div className="rounded-2xl overflow-hidden shadow-2xl">
-                    <img
-                      src={section.image}
-                      alt={section.title}
-                      className="max-w-5xl mx-auto w-full h-auto"
-                    />
+                <div className="max-w-7xl mx-auto">
+                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 items-center`}>
+                    <div>
+                      <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+                        {section.title || landingData.companyName}
+                      </h1>
+                      <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+                        {section.content || landingData.companyDescription}
+                      </p>
+                      <Link
+                        href="/products"
+                        className="inline-block bg-gradient-primary text-white px-8 py-3 rounded-lg font-semibold hover:shadow-lg transition-all transform hover:-translate-y-0.5"
+                      >
+                        Comenzar Ahora →
+                      </Link>
+                    </div>
+                    {section.image && (
+                      <div className="rounded-2xl overflow-hidden shadow-2xl">
+                        <img
+                          src={section.image}
+                          alt={section.title}
+                          className="w-full h-auto object-cover aspect-square md:aspect-auto"
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
             {section.type === "about" && (
-              <div className="max-w-4xl mx-auto bg-white/50 backdrop-blur-sm rounded-2xl p-8 shadow-lg">
-                <h2 className="text-4xl font-bold text-gray-900 mb-6">
-                  {section.title}
-                </h2>
-                <p className="text-lg text-gray-700 leading-relaxed">{section.content}</p>
-              </div>
-            )}
+                <div className="max-w-4xl mx-auto">
+                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 items-center`}>
+                    {section.image && (
+                      <div className="rounded-2xl overflow-hidden shadow-lg order-2 md:order-1">
+                        <img
+                          src={section.image}
+                          alt={section.title}
+                          className="w-full h-auto object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className={section.image ? "order-1 md:order-2" : ""}>
+                      <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                        {section.title}
+                      </h2>
+                      <p className="text-gray-700 text-lg leading-relaxed whitespace-pre-line">
+                        {section.content}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             {section.type === "features" && (
               <div className="max-w-7xl mx-auto">
                 <h2 className="text-4xl font-bold text-gray-900 mb-12 text-center">
