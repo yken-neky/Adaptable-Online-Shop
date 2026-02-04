@@ -18,10 +18,10 @@ export default function Navbar() {
     setUserRole(role);
   }, []);
 
-  const navLinks = [
-    { href: "/landing", label: "Inicio" },
-    { href: "/products", label: "Productos" },
-  ];
+  const navLinks = [{ href: "/landing", label: "Inicio" }];
+  if (userRole !== "admin") {
+    navLinks.push({ href: "/products", label: "Productos" });
+  }
 
   return (
     <nav className="bg-white/95 backdrop-blur-sm shadow-md border-b border-gray-100 sticky top-0 z-50">
@@ -55,7 +55,11 @@ export default function Navbar() {
                 {userRole === "admin" && (
                   <Link
                     href="/admin"
-                    className="text-gray-700 hover:text-primary-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    className={`px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 ${
+                      pathname?.startsWith("/admin")
+                        ? "bg-gradient-primary text-white"
+                        : "text-gray-700 hover:text-primary-600"
+                    }`}
                   >
                     Panel Admin
                   </Link>
@@ -66,12 +70,14 @@ export default function Navbar() {
                 >
                   Mi Perfil
                 </Link>
-                <Link
-                  href="/cart"
-                  className="bg-gradient-primary text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
-                >
-                  🛒 Carrito
-                </Link>
+                {userRole !== "admin" && (
+                  <Link
+                    href="/cart"
+                    className="bg-gradient-primary text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+                  >
+                    🛒 Carrito
+                  </Link>
+                )}
                 <button
                   onClick={() => {
                     localStorage.removeItem("token");

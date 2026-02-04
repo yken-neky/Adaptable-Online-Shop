@@ -90,9 +90,26 @@ function transformLandingSection(section: any): LandingSection {
 
 class ApiClient {
   private baseUrl: string;
+  private cachedToken: string | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+  }
+
+  // Permite establecer el token manualmente (útil al iniciar sesión o logout)
+  setToken(token: string | null) {
+    this.cachedToken = token;
+    if (typeof window !== "undefined") {
+      if (token) {
+        localStorage.setItem("token", token);
+      } else {
+        localStorage.removeItem("token");
+      }
+    }
+  }
+
+  clearToken() {
+    this.setToken(null);
   }
 
   private async request<T>(
@@ -100,7 +117,12 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    // Prefer cached token, fall back to localStorage (helps tests and SSR-safe access)
+    let token: string | null = this.cachedToken ?? null;
+    if (!token && typeof window !== "undefined") {
+      token = localStorage.getItem("token");
+      this.cachedToken = token;
+    }
 
     const config: RequestInit = {
       ...options,
@@ -195,6 +217,22 @@ class ApiClient {
 
   async getCurrentUser() {
     return this.request<any>("/auth/me");
+  }
+
+  // Usuarios
+  async getUsers() {
+    try {
+      const result = await this.request<any[]>("/users");
+      // Asegurar que siempre retorne un array
+      if (!Array.isArray(result)) {
+        return [];
+      }
+      return result;
+    } catch (error) {
+      // Si el endpoint no está disponible, retornar array vacío
+      console.warn("getUsers endpoint not available yet:", error);
+      return [];
+    }
   }
 
   // Productos

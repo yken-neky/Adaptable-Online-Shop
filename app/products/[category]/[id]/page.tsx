@@ -17,6 +17,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     async function loadProduct() {
@@ -36,6 +37,8 @@ export default function ProductDetailPage() {
       }
     }
     loadProduct();
+    const role = typeof window !== "undefined" ? localStorage.getItem("userRole") : null;
+    setIsAdmin(role === "admin");
   }, [productId]);
 
   const handleAddToCart = async () => {
@@ -147,27 +150,33 @@ export default function ProductDetailPage() {
                   </span>
                 </div>
               )}
-              <div className="flex items-center gap-4 mb-6">
-                <label htmlFor="quantity" className="text-gray-700 font-medium">
-                  Cantidad:
-                </label>
-                <input
-                  id="quantity"
-                  type="number"
-                  min="1"
-                  max={product.stock || 999}
-                  value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                  className="w-20 px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
-              <button
-                onClick={handleAddToCart}
-                disabled={addingToCart || (product.stock !== undefined && quantity > product.stock)}
-                className="w-full bg-gradient-primary text-white py-4 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none transition-all duration-200"
-              >
-                {addingToCart ? "Agregando..." : "🛒 Agregar al Carrito"}
-              </button>
+
+              {/* Si es admin no mostramos la UI de compra */}
+              {!isAdmin && (
+                <>
+                  <div className="flex items-center gap-4 mb-6">
+                    <label htmlFor="quantity" className="text-gray-700 font-medium">
+                      Cantidad:
+                    </label>
+                    <input
+                      id="quantity"
+                      type="number"
+                      min="1"
+                      max={product.stock || 999}
+                      value={quantity}
+                      onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                      className="w-20 px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={addingToCart || (product.stock !== undefined && quantity > product.stock)}
+                    className="w-full bg-gradient-primary text-white py-4 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none transition-all duration-200"
+                  >
+                    {addingToCart ? "Agregando..." : "🛒 Agregar al Carrito"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

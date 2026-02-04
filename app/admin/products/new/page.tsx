@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { apiClient } from "@/lib/api";
 import type { Category } from "@/types";
 
@@ -65,7 +63,6 @@ export default function NewProductPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
       <main className="flex-grow py-8 px-4">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-900 mb-8">Nuevo Producto</h1>
@@ -178,7 +175,6 @@ export default function NewProductPage() {
           </form>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

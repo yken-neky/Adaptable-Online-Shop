@@ -14,8 +14,15 @@ function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const validateEmail = (value: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(value);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +33,16 @@ function LoginForm() {
       return;
     }
 
+    if (email && !validateEmail(email.trim())) {
+      setEmailError("Por favor, ingresa un correo electrónico válido.");
+      return;
+    }
+
+    if (password && password.length < 6) {
+      setPasswordError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -33,9 +50,11 @@ function LoginForm() {
       if ('error' in response) {
         setError(response.error);
       } else {
-        localStorage.setItem("token", response.token);
+        apiClient.setToken(response.token);
         localStorage.setItem("userRole", response.user.role);
-        router.push(redirect);
+        // Si es admin, llevar directo al panel admin
+        const target = response.user?.role === "admin" ? "/admin" : redirect;
+        router.push(target);
       }
     } catch (err: any) {
       // Para errores no esperados (5xx, conexión, etc.)
@@ -68,10 +87,21 @@ function LoginForm() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setEmail(v);
+                  if (!v.trim()) {
+                    setEmailError("El email es requerido");
+                  } else if (!validateEmail(v.trim())) {
+                    setEmailError("Por favor, ingresa un correo electrónico válido.");
+                  } else {
+                    setEmailError("");
+                  }
+                }}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
               />
+              {emailError && <p className="text-sm text-red-600 mt-1">{emailError}</p>}
             </div>
             <div className="mb-6">
               <label htmlFor="password" className="block text-gray-700 font-medium mb-2">
@@ -81,14 +111,25 @@ function LoginForm() {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setPassword(v);
+                  if (!v) {
+                    setPasswordError("La contraseña es requerida");
+                  } else if (v.length < 6) {
+                    setPasswordError("La contraseña debe tener al menos 6 caracteres.");
+                  } else {
+                    setPasswordError("");
+                  }
+                }}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
               />
+              {passwordError && <p className="text-sm text-red-600 mt-1">{passwordError}</p>}
             </div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !!emailError || !!passwordError}
               className="w-full bg-gradient-primary text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none transition-all duration-200"
             >
               {loading ? "Iniciando sesión..." : "Iniciar Sesión"}

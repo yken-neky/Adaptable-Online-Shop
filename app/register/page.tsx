@@ -15,20 +15,28 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
   });
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const validateEmail = (value: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(value);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Las contraseñas no coinciden");
+      setConfirmPasswordError("Las contraseñas no coinciden");
       return;
     }
 
     if (formData.password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres");
+      setPasswordError("La contraseña debe tener al menos 6 caracteres");
       return;
     }
 
@@ -37,8 +45,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!formData.email.trim() || !formData.email.includes("@")) {
-      setError("El email no es válido");
+    if (!formData.email.trim() || !validateEmail(formData.email.trim())) {
+      setEmailError("El email no es válido");
       return;
     }
 
@@ -50,7 +58,11 @@ export default function RegisterPage() {
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
       });
-      localStorage.setItem("token", response.token);
+      if ('error' in response) {
+        setError(response.error);
+        return;
+      }
+      apiClient.setToken(response.token);
       localStorage.setItem("userRole", response.user.role);
       router.push("/landing");
     } catch (err: any) {
@@ -97,10 +109,21 @@ export default function RegisterPage() {
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFormData({ ...formData, email: v });
+                  if (!v.trim()) {
+                    setEmailError("El email es requerido");
+                  } else if (!validateEmail(v.trim())) {
+                    setEmailError("Por favor, ingresa un correo electrónico válido.");
+                  } else {
+                    setEmailError("");
+                  }
+                }}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
               />
+              {emailError && <p className="text-sm text-red-600 mt-1">{emailError}</p>}
             </div>
             <div className="mb-4">
               <label htmlFor="password" className="block text-gray-700 font-medium mb-2">
@@ -110,10 +133,21 @@ export default function RegisterPage() {
                 id="password"
                 type="password"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFormData({ ...formData, password: v });
+                  if (!v) {
+                    setPasswordError("La contraseña es requerida");
+                  } else if (v.length < 6) {
+                    setPasswordError("La contraseña debe tener al menos 6 caracteres");
+                  } else {
+                    setPasswordError("");
+                  }
+                }}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
               />
+              {passwordError && <p className="text-sm text-red-600 mt-1">{passwordError}</p>}
             </div>
             <div className="mb-6">
               <label htmlFor="confirmPassword" className="block text-gray-700 font-medium mb-2">
@@ -123,10 +157,19 @@ export default function RegisterPage() {
                 id="confirmPassword"
                 type="password"
                 value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFormData({ ...formData, confirmPassword: v });
+                  if (v !== formData.password) {
+                    setConfirmPasswordError("Las contraseñas no coinciden");
+                  } else {
+                    setConfirmPasswordError("");
+                  }
+                }}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
               />
+              {confirmPasswordError && <p className="text-sm text-red-600 mt-1">{confirmPasswordError}</p>}
             </div>
             <button
               type="submit"
